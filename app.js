@@ -8,7 +8,7 @@ const app = express();
 app.engine('handlebars', hb({defaultLayout: 'main'}));
 app.set('view engine', 'handlebars');
 app.use(express.urlencoded());
-app.use(express.static(path.join(__dirname, '/public')));
+app.use(express.static(path.join(__dirname, '/public'))); // Used to access css file(s)
 
 // Sample connection string from docs: 'postgresql://dbuser:secretpassword@database.server.com:3211/mydb'
 // dbuser == tnh_superuser
@@ -36,6 +36,7 @@ CREATE TABLE IF NOT EXISTS users(
   email VARCHAR(255) UNIQUE,
   isAdmin BOOLEAN
 );`
+// Made pics TEXT for now because I wasn't sure how we wanted to store them. Figured we could just store their URLs.
 const createProfilesTable = `
 CREATE TABLE IF NOT EXISTS profiles(
   userId INTEGER REFERENCES users(id),
@@ -98,6 +99,7 @@ const queryCreateShow = 'INSERT INTO show(title, genre, studio, synopsis, episod
 // Search queries
 const queryLoginUser = 'SELECT id, isAdmin FROM users WHERE username=$1 AND email=$2'
 
+// Create tables
 client.query(createUsersTable, (err, res) => {
   if (err) console.log(err.stack);
 });
@@ -106,6 +108,7 @@ client.query(createProfilesTable, (err, res) => {
   if (err) console.log(err.stack);
 });
 
+// Routing
 // Landing page
 app.get('/', (req, res) => {
   res.render('login');
@@ -154,7 +157,7 @@ app.post('/create_user', (req, res) => {
 
 // Creates a new profile for user
 app.post('/create_profile', (req, res) => {
-  const userId = app.get('userId'); // Obtains the saved user id
+  const userId = app.get('userId'); // Returns the saved user id
   const name = req.body.name;
   const profilePic = req.body.profilePic;
   const bio = req.body.bio;
