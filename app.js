@@ -10,6 +10,11 @@ app.set('view engine', 'handlebars');
 app.use(express.urlencoded());
 app.use(express.static(path.join(__dirname, '/public')));
 
+// Sample connection string from docs: 'postgresql://dbuser:secretpassword@database.server.com:3211/mydb'
+// dbuser == tnh_superuser
+// secretpassword == password
+// database.server.com:3211 == localhost
+// mydb == tnh_db
 const connectionString = 'postgresql://tnh_superuser:password@localhost/tnh_db'
 const client = new Client({
   connectionString: connectionString,
@@ -101,14 +106,17 @@ client.query(createProfilesTable, (err, res) => {
   if (err) console.log(err.stack);
 });
 
+// Landing page
 app.get('/', (req, res) => {
   res.render('login');
 });
 
+// Create Profile Page
 app.get('/create_profile', (req, res) => {
   res.render('create_profile');
 });
 
+// Saves userId and admin status after "logging in"
 app.post('/login_user', (req, res) => {
   const username = req.body.username1;
   const email = req.body.email1;
@@ -128,6 +136,7 @@ app.post('/login_user', (req, res) => {
   });
 });
 
+// Inserts new user to database. Prompts user to create a new profile
 app.post('/create_user', (req, res) => {
   const username = req.body.username2;
   const email = req.body.email2;
@@ -143,6 +152,7 @@ app.post('/create_user', (req, res) => {
   });
 });
 
+// Creates a new profile for user
 app.post('/create_profile', (req, res) => {
   const userId = app.get('userId'); // Obtains the saved user id
   const name = req.body.name;
