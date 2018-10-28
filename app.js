@@ -94,7 +94,7 @@ CREATE TABLE IF NOT EXISTS post_comments(
 // Creation queries
 const queryCreateUser = 'INSERT INTO users(username, email, isAdmin) VALUES($1, $2, $3) RETURNING id';
 const queryCreateProfile = 'INSERT INTO profiles(userId, name, profilePic, bio) VALUES($1, $2, $3, $4)';
-const queryCreateShow = 'INSERT INTO show(title, genre, studio, synopsis, episodes, year, runtime, type) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)';
+const queryCreateShow = 'INSERT INTO shows(title, genre, studio, synopsis, episodes, year, runtime, type) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)';
 
 // Search queries
 const queryLoginUser = 'SELECT id, isAdmin FROM users WHERE username=$1 AND email=$2'
