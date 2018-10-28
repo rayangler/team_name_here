@@ -15,7 +15,7 @@ app.use(express.static(path.join(__dirname, '/public'))); // Used to access css 
 // secretpassword == password
 // database.server.com:3211 == localhost
 // mydb == tnh_db
-const connectionString = 'postgresql://tnh_superuser:password@localhost/tnh_db'
+//const connectionString = 'postgresql://tnh_superuser:password@localhost/tnh_db'
 const client = new Client({
   connectionString: connectionString,
 });
@@ -98,7 +98,8 @@ const queryCreateShow = 'INSERT INTO shows(title, genre, studio, synopsis, episo
 
 // Search queries
 const queryLoginUser = 'SELECT id, isAdmin FROM users WHERE username=$1 AND email=$2'
-
+const queryUserData = 'SELECT username, email FROM users WHERE id = $1'
+const queryAllShows = 'SELECT * FROM Shows'
 // Create tables
 client.query(createUsersTable, (err, res) => {
   if (err) console.log(err.stack);
@@ -107,7 +108,12 @@ client.query(createUsersTable, (err, res) => {
 client.query(createProfilesTable, (err, res) => {
   if (err) console.log(err.stack);
 });
-
+client.query(createShowsTable, (err, res) => {
+  if (err) console.log(err.stack);
+});
+client.query(createShowsWatchlistTable, (err, res) => {
+  if (err) console.log(err.stack);
+});
 // Routing
 // Landing page
 app.get('/', (req, res) => {
@@ -118,6 +124,43 @@ app.get('/', (req, res) => {
 app.get('/create_profile', (req, res) => {
   res.render('create_profile');
 });
+
+//Create Home Page
+app.get('/home', (req, res) => {
+  const userId = app.get('userId');
+  var usrname;
+  var email;
+  var sid;
+  var stitle;
+  client.query(queryUserData, [userId], (errors, results) => {
+  if (errors) {
+      console.log('Not Logged In');
+      console.log(errors.stack);
+    } else {
+      usrname = results.rows[0].username;
+      email = results.rows[0].email;
+   }
+  })
+  client.query(queryAllShows, (errors, results) => {
+  if (errors) {
+      console.log('Failed to acquire shows');
+      console.log(errors.stack);
+    } else {
+      console.log(results.rows.length);
+      randnum = Math.floor(Math.random() * results.rows.length);
+      sid = results.rows[randnum].id;
+      stitle = results.rows[randnum].title;
+  var res_bod = {
+    username: usrname,
+    theemail: email,
+    showid: sid,
+    randomshowtitle: stitle
+  };
+  res.render('home', res_bod);
+   }
+  })
+});
+
 
 // Saves userId and admin status after "logging in"
 app.post('/login_user', (req, res) => {
@@ -135,6 +178,7 @@ app.post('/login_user', (req, res) => {
       console.log('Admin User: ' + isAdmin);
       app.set('userId', userId); // Allows the app to remember the user's id
       app.set('isAdmin', isAdmin); // Remembers the user's admin status
+      res.redirect('/home');
     }
   });
 });
