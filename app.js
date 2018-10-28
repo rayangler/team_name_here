@@ -50,7 +50,7 @@ CREATE TABLE IF NOT EXISTS shows(
   title VARCHAR(255),
   genre VARCHAR(255),
   studio VARCHAR(255),
-  synopsis VARCHAR(255),
+  synopsis TEXT,
   episodes INTEGER,
   year INTEGER,
   runtime INTEGER,
