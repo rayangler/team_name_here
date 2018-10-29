@@ -128,6 +128,7 @@ app.get('/create_profile', (req, res) => {
 //Create Home Page
 app.get('/home', (req, res) => {
   const userId = app.get('userId');
+  var res_bod = {};
   var usrname;
   var email;
   var sid;
@@ -137,8 +138,8 @@ app.get('/home', (req, res) => {
       console.log('Not Logged In');
       console.log(errors.stack);
     } else {
-      usrname = results.rows[0].username;
-      email = results.rows[0].email;
+      res_bod["username"] = results.rows[0].username;
+      res_bod["theemail"] = results.rows[0].email;
    }
   })
   client.query(queryAllShows, (errors, results) => {
@@ -148,16 +149,13 @@ app.get('/home', (req, res) => {
     } else {
       console.log(results.rows.length);
       randnum = Math.floor(Math.random() * results.rows.length);
-      sid = results.rows[randnum].id;
-      stitle = results.rows[randnum].title;
-  var res_bod = {
-    username: usrname,
-    theemail: email,
-    showid: sid,
-    randomshowtitle: stitle
-  };
-  res.render('home', res_bod);
+      res_bod["showid"] = results.rows[randnum].id;
+      res_bod["randomshowtitle"] = results.rows[randnum].title;
+      res_bod["genre"] = results.rows[randnum].genre;
+      res_bod["episodes"] = results.rows[randnum].episodes;
+      res_bod["summary"] = results.rows[randnum].summary;
    }
+  res.render('home', res_bod);
   })
 });
 
