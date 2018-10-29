@@ -15,7 +15,7 @@ app.use(express.static(path.join(__dirname, '/public'))); // Used to access css 
 // secretpassword == password
 // database.server.com:3211 == localhost
 // mydb == tnh_db
-const connectionString = 'postgresql://tnh_superuser:password@localhost:5432/tnh_db'
+const connectionString = 'postgresql://tnh_superuser:password@localhost/tnh_db'
 const client = new Client({
   connectionString: connectionString,
 });
@@ -100,11 +100,11 @@ const queryCreateShow = 'INSERT INTO shows(title, genre, studio, synopsis, episo
 const queryLoginUser = 'SELECT id, isAdmin FROM users WHERE username=$1 AND email=$2'
 const queryUserData = 'SELECT username, email FROM users WHERE id = $1'
 const queryAllShows = 'SELECT * FROM Shows'
+
 // Create tables
 client.query(createUsersTable, (err, res) => {
   if (err) console.log(err.stack);
 });
-
 client.query(createProfilesTable, (err, res) => {
   if (err) console.log(err.stack);
 });
@@ -114,6 +114,19 @@ client.query(createShowsTable, (err, res) => {
 client.query(createShowsWatchlistTable, (err, res) => {
   if (err) console.log(err.stack);
 });
+client.query(createShowsReviewsTable, (err, res) => {
+  if (err) console.log(err.stack);
+});
+client.query(createFollowersTable, (err, res) => {
+  if (err) console.log(err.stack);
+});
+client.query(createUserPostsTable, (err, res) => {
+  if (err) console.log(err.stack);
+});
+client.query(createPostCommentsTable, (err, res) => {
+  if (err) console.log(err.stack);
+});
+
 // Routing
 // Landing page
 app.get('/', (req, res) => {
@@ -123,6 +136,10 @@ app.get('/', (req, res) => {
 // Create Profile Page
 app.get('/create_profile', (req, res) => {
   res.render('create_profile');
+});
+
+app.get('/profile', (req, res) => {
+  res.render('')
 });
 
 //Create Home Page
