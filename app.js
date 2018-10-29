@@ -16,7 +16,6 @@ app.use(express.static(path.join(__dirname, '/public'))); // Used to access css 
 // database.server.com:3211 == localhost
 // mydb == tnh_db
 //const connectionString = 'postgresql://tnh_superuser:password@localhost/tnh_db'
-const connectionString = 'postgresql://postgres:fftnb6fcq8h@localhost:5000/proj1_db'
 const client = new Client({
   connectionString: connectionString,
 });
