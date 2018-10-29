@@ -129,10 +129,6 @@ app.get('/create_profile', (req, res) => {
 app.get('/home', (req, res) => {
   const userId = app.get('userId');
   var res_bod = {};
-  var usrname;
-  var email;
-  var sid;
-  var stitle;
   client.query(queryUserData, [userId], (errors, results) => {
   if (errors) {
       console.log('Not Logged In');
