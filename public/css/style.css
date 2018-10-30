@@ -21,3 +21,15 @@
 #timestamp {
   font-size: x-small;
 }
+.column {
+  box-sizing: border-box;
+  float: left;
+  width: 33.33%;
+  padding: 10px;
+}
+
+.row:after {
+  content: "";
+  display: table;
+  clear: both;
+}
