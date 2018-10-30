@@ -194,11 +194,6 @@ app.get('/home', (req, res) => {
   })
 });
 
-app.post('/test_sending_data', (req, res) => {
-  app.set('testVariable', req.body.testVariable);
-  res.redirect('/reviews');
-});
-
 app.post('/test_create_review', (req, res) => {
   const userId = req.body.userId;
   const showId = req.body.showId;
@@ -224,7 +219,7 @@ app.post('/login_user', (req, res) => {
     if (errors) {
       console.log('Error logging in');
       console.log(errors.stack);
-    } 
+    }
     else if (results.rows.length == 0){
       console.log('Invalid UserName or email');
       res.redirect('/');
