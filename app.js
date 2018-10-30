@@ -102,6 +102,7 @@ const queryLoginUser = 'SELECT id, isAdmin FROM users WHERE username=$1 AND emai
 const queryUserData = 'SELECT username, email FROM users WHERE id = $1'
 const queryAllShows = 'SELECT * FROM Shows'
 const queryFullUserInfo = 'SELECT * FROM (users Inner Join profiles ON users.id = profiles.userid) where id = $1'
+const queryProfile = 'SELECT * FROM (users Inner Join followers on users.id = followers.userid) where id = $1'
 const queryLatestReviews = `
 SELECT showId, userId, title, username, rating, review, timestamp FROM shows_reviews
 JOIN users ON users.id = shows_reviews.userId
@@ -155,13 +156,33 @@ app.get('/profile', (req, res) => {
       console.log('Profile generation issue');
       console.log(errors.stack);
     }
+    else if (results.rows.length == 0){
+      console.log('Error');
+      res.redirect('/');
+    }
     else {
       res_bod["userurl"] = results.rows[0].profilepic;
       res_bod["name"] = results.rows[0].name;
       res_bod["email"] = results.rows[0].email;
       res_bod["bio"] = results.rows[0].bio;
+      client.query(queryProfile, [userId], (errors2, results2) => {
+        if (errors2){
+          console.log('Profile generation issue');
+          console.log(errors2.stack);
+        }
+        else if (results2.rows.length == 0){
+          console.log('Error');
+          res.redirect('/');
+        }
+	else {
+	  res_bod["followers"] = "";
+	  for(var i = 0; i < results2.rows.length; i++) {
+          	res_bod["followers"] = res_bod["followers"] + results2.rows[i].followinguserid + "\n";
+	  }
+        }
+        res.render('profile', res_bod);
+      });
     }
-    res.render('profile', res_bod);
   });
 });
 
