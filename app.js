@@ -69,7 +69,8 @@ CREATE TABLE IF NOT EXISTS shows_reviews(
   showId INTEGER REFERENCES shows(id),
   rating INTEGER CHECK (rating > 0 AND rating <= 10),
   review TEXT,
-  timestamp TIMESTAMPTZ
+  timestamp TIMESTAMPTZ,
+  PRIMARY KEY (userId,showId)
 );`
 const createFollowersTable = `
 CREATE TABLE IF NOT EXISTS followers(
@@ -98,11 +99,20 @@ const queryCreateShow = 'INSERT INTO shows(title, genre, studio, synopsis, episo
 const queryCreateReview = 'INSERT INTO shows_reviews(userId, showId, rating, review, timestamp) VALUES ($1, $2, $3, $4, $5)';
 
 // Search queries
-const queryLoginUser = 'SELECT id, isAdmin FROM users WHERE username=$1 AND email=$2'
 const queryUserData = 'SELECT username, email FROM users WHERE id = $1'
 const queryAllShows = 'SELECT * FROM Shows'
 const queryFullUserInfo = 'SELECT * FROM (users Inner Join profiles ON users.id = profiles.userid) where id = $1'
 const queryProfile = 'SELECT * FROM (users Inner Join followers on users.id = followers.userid) where id = $1'
+const queryLoginUser = 'SELECT id, isAdmin FROM users WHERE username=$1 AND email=$2';
+const queryFollowing = 'SELECT * FROM users JOIN FOLLOWERS ON followingUserId = id WHERE userId = $1';
+const queryCheckFollowing = 'SELECT * FROM followers WHERE userId = $1 AND followingUserId = $2';
+const queryAddFollowing = 'INSERT INTO followers VALUES ($1, $2)';
+const queryDeleteFollowing = 'DELETE FROM followers where userid = $1 AND followingUserId = $2';
+const queryNotFollowing = `
+SELECT * FROM users
+WHERE id != $1 AND
+NOT EXISTS (SELECT 1 FROM followers WHERE userId = $1 AND users.id = followers.followingUserId);
+`;
 const queryLatestReviews = `
 SELECT showId, userId, title, username, rating, review, timestamp FROM shows_reviews
 JOIN users ON users.id = shows_reviews.userId
@@ -114,6 +124,22 @@ SELECT * FROM shows_watchlist
 JOIN shows ON shows_watchlist.showId = shows.id
 WHERE userId = $1;
 `;
+const queryShowsList = `
+SELECT * FROM shows WHERE type='Tv' ORDER BY title ASC;
+`;
+const queryMoviesList = `
+SELECT * FROM shows WHERE type='Movie' ORDER BY title ASC;
+`;
+const queryShowPage = `
+SELECT * FROM shows WHERE shows.id=$1;
+`;
+const queryAddToWatchList = `INSERT INTO shows_watchlist VALUES ($1, $2, $3, $4)`
+const queryCheckWatchlist = `SELECT status, episodesWatched FROM shows_watchlist WHERE userId=$1 AND showId=$2;`
+const queryUpdateWatchList = `
+UPDATE shows_watchlist SET (status, episodesWatched) = ($1, $2)
+WHERE userId=$3 AND showId=$4;
+`
+const queryShowEpisodes = `SELECT episodes FROM shows WHERE id=$1;`
 
 // Create tables
 client.query(createUsersTable, (err, res) => {
@@ -194,26 +220,99 @@ app.get('/profile', (req, res) => {
 app.get('/test', (req, res) => {
   res.render('test');
 });
+
 app.get('/watchlist', (req, res) => {
   if(!app.get('userId')) {
     res.redirect('/');
     return;
   }
   client.query(queryWatchList, [app.get('userId')], (errors, results) => {
+    if (errors) {
+      console.log(errors);
+      return;
+    }
     let renderData = {tv:{dropped:[],watching:[],completed:[]}, movie:{dropped:[],watching:[],completed:[]}};
     for(let row of results.rows){
       let pointer = renderData[row.type.toLowerCase()][row.status.toLowerCase()];
       pointer.push(row);
     }
-    res.render('watchlist', {renderData});    
+    res.render('watchlist', {renderData});
   });
 });
+
+app.get('/users', (req, res) => {
+  if(!app.get('userId')) {
+    res.redirect('/');
+    return;
+  }
+  let renderData = {};
+  client.query(queryNotFollowing, [app.get('userId')], (errors, results) => {
+    if (errors) {
+      console.log(errors);
+      return;
+    }
+    renderData.notfollowing = results.rows;
+    client.query(queryFollowing, [app.get('userId')], (errrors, results) => {
+      renderData.following = results.rows;
+      res.render('users', {renderData});
+    });
+  });
+});
+
 app.get('/reviews', (req, res) => {
   client.query(queryLatestReviews, (errors, results) => {
     if (errors) console.log(errors.stack);
     else {
       console.log(results);
       res.render('reviews', {results});
+    }
+  });
+});
+
+app.get('/list/shows', (req, res) => {
+  client.query(queryShowsList, (errors, results) => {
+    if (errors) console.log(errors.stack);
+    else {
+      res.render('titles', {results});
+    }
+  });
+});
+
+app.get('/list/movies', (req, res) => {
+  client.query(queryMoviesList, (errors, results) => {
+    if (errors) console.log(errors.stack);
+    else {
+      res.render('titles', {results});
+    }
+  });
+});
+
+app.get('/title/:id', (req, res) => {
+  const id = req.params.id;
+  var data = {};
+  app.set('showId', id);
+  client.query(queryShowPage, [id], (errors, results) => {
+    if (errors) console.log(errors.stack);
+    else {
+      data = results.rows[0];
+      client.query(queryCheckWatchlist, [app.get('userId'), id], (errors, results) => {
+        if(results.rowCount != 0) {
+          data.episodeswatched = results.rows[0].episodeswatched;
+          data.status = results.rows[0].status;
+        }
+        console.log(data);
+        res.render('show_page', data);
+      });
+    }
+  });
+});
+
+app.get('/create_review', (req, res) => {
+  const showId = app.get('showId');
+  client.query(queryShowPage, [showId], (errors, results) => {
+    if (errors) console.log(errors.stack);
+    else {
+      res.render('create_review', results.rows[0]);
     }
   });
 });
@@ -252,10 +351,32 @@ app.get('/home', (req, res) => {
       }
   });
 });
+app.post('/delete_follower', (req, res) => {
+  const userid = app.get('userId');
+  const followinguserid = req.body.followinguserid;
+  client.query(queryDeleteFollowing, [userid, followinguserid], (errors, results) => {
+    if (errors) {
+      console.log(errors);
+      return;
+    }
+    res.redirect('/users');
+  });
+});
+app.post('/add_follower', (req, res) => {
+  const userid = app.get('userId');
+  const followinguserid = req.body.followinguserid;
+  client.query(queryAddFollowing, [userid, followinguserid], (errors, results) => {
+    if (errors) {
+      console.log(errors);
+      return;
+    }
+    res.redirect('/users');
+  });
+});
 
-app.post('/test_create_review', (req, res) => {
-  const userId = req.body.userId;
-  const showId = req.body.showId;
+app.post('/create_review', (req, res) => {
+  const userId = app.get('userId');
+  const showId = app.get('showId');
   const rating = req.body.rating;
   const review = req.body.review;
   const timestamp = new Date().toISOString();
@@ -264,9 +385,46 @@ app.post('/test_create_review', (req, res) => {
       console.log(errors.stack);
     } else {
       console.log('Added review');
-      res.redirect('/test');
+      res.redirect('/title/' + showId);
     }
   });
+});
+
+app.post('/add_to_watchlist', (req, res) => {
+  const userId = app.get('userId');
+  const showId = app.get('showId');
+  var status = "watching"
+  var episodes = 1;
+  client.query(queryAddToWatchList, [userId, showId, status, episodes], (errors, results) => {
+    if (errors) console.log(errors.stack);
+    else {
+      console.log('Added to watchlist');
+      res.redirect('/title/' + showId);
+    }
+  });
+});
+
+function updateWatchlist(status, episodes, res) {
+  const userId = app.get('userId');
+  const showId = app.get('showId');
+  client.query(queryUpdateWatchList, [status, episodes, userId, showId], (errors, results) => {
+    if (errors) console.log(errors.stack);
+    else {
+      console.log('Updated watchlist');
+      res.redirect('/title/' + showId);
+    }
+  });
+}
+
+app.post('/update_watchlist', (req, res) => {
+  var status = req.body.status;
+  if (status == 'completed') {
+    client.query('SELECT episodes FROM shows WHERE id=$1;', [app.get('showId')], (errors, results) => {
+      updateWatchlist(status, results.rows[0].episodes, res);
+    });
+  } else {
+    updateWatchlist(status, req.body.episode, res);
+  }
 });
 
 
