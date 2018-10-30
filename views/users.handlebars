@@ -1,0 +1,18 @@
+<h2>Users</h2>
+
+<ol>
+{{#each renderData.notfollowing}}
+  <li>{{username}}<form action="/add_follower" method="POST"><input type="hidden"
+  name="followinguserid" value="{{id}}"><input type="submit" value="Follow"></form></li>
+{{/each}}
+</ol>
+
+<h2>Following</h2>
+
+<ol>
+{{#each renderData.following}}
+  <li>{{username}}<form action="/delete_follower" method="POST"><input type="hidden"
+  name="followinguserid" value="{{id}}"><input type="submit"
+  value="Remove Follower"></form></li>
+{{/each}}
+</ol>

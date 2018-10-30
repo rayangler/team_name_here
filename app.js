@@ -98,9 +98,18 @@ const queryCreateShow = 'INSERT INTO shows(title, genre, studio, synopsis, episo
 const queryCreateReview = 'INSERT INTO shows_reviews(userId, showId, rating, review, timestamp) VALUES ($1, $2, $3, $4, $5)';
 
 // Search queries
-const queryLoginUser = 'SELECT id, isAdmin FROM users WHERE username=$1 AND email=$2'
-const queryUserData = 'SELECT username, email FROM users WHERE id = $1'
-const queryAllShows = 'SELECT * FROM Shows'
+const queryLoginUser = 'SELECT id, isAdmin FROM users WHERE username=$1 AND email=$2';
+const queryUserData = 'SELECT username, email FROM users WHERE id = $1';
+const queryAllShows = 'SELECT * FROM Shows';
+const queryFollowing = 'SELECT * FROM users JOIN FOLLOWERS ON followingUserId = id WHERE userId = $1';
+const queryCheckFollowing = 'SELECT * FROM followers WHERE userId = $1 AND followingUserId = $2';
+const queryAddFollowing = 'INSERT INTO followers VALUES ($1, $2)';
+const queryDeleteFollowing = 'DELETE FROM followers where userid = $1 AND followingUserId = $2';
+const queryNotFollowing = `
+SELECT * FROM users
+WHERE id != $1 AND 
+NOT EXISTS (SELECT 1 FROM followers WHERE userId = $1); 
+`;
 const queryLatestReviews = `
 SELECT showId, userId, title, username, rating, review, timestamp FROM shows_reviews
 JOIN users ON users.id = shows_reviews.userId
@@ -164,12 +173,36 @@ app.get('/watchlist', (req, res) => {
     return;
   }
   client.query(queryWatchList, [app.get('userId')], (errors, results) => {
+    if (errors) {
+      console.log(errors);
+      return;
+    }
     let renderData = {tv:{dropped:[],watching:[],completed:[]}, movie:{dropped:[],watching:[],completed:[]}};
     for(let row of results.rows){
       let pointer = renderData[row.type.toLowerCase()][row.status.toLowerCase()];
       pointer.push(row);
     }
     res.render('watchlist', {renderData});    
+  });
+});
+app.get('/users', (req, res) => {
+  if(!app.get('userId')) {
+    res.redirect('/');
+    return;
+  }
+  let renderData = {};
+  client.query(queryNotFollowing, [app.get('userId')], (errors, results) => {
+    if (errors) {
+      console.log(errors);
+      return;
+    }
+    console.log(results);
+    renderData.notfollowing = results.rows;
+    client.query(queryFollowing, [app.get('userId')], (errrors, results) => {
+      renderData.following = results.rows;
+      console.log(results);
+      res.render('users', {renderData});    
+    });
   });
 });
 app.get('/reviews', (req, res) => {
@@ -210,6 +243,29 @@ app.get('/home', (req, res) => {
    }
   res.render('home', res_bod);
   })
+});
+app.post('/delete_follower', (req, res) => {
+  const userid = app.get('userId');
+  const followinguserid = req.body.followinguserid;
+  console.log(queryDeleteFollowing, userid, followinguserid);
+  client.query(queryDeleteFollowing, [userid, followinguserid], (errors, results) => {
+    if (errors) {
+      console.log(errors);
+      return;
+    }
+    res.redirect('/users');
+  });
+});
+app.post('/add_follower', (req, res) => {
+  const userid = app.get('userId');
+  const followinguserid = req.body.followinguserid;
+  client.query(queryAddFollowing, [userid, followinguserid], (errors, results) => {
+    if (errors) {
+      console.log(errors);
+      return;
+    }
+    res.redirect('/users');
+  });
 });
 
 app.post('/test_create_review', (req, res) => {
