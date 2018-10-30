@@ -108,7 +108,7 @@ const queryDeleteFollowing = 'DELETE FROM followers where userid = $1 AND follow
 const queryNotFollowing = `
 SELECT * FROM users
 WHERE id != $1 AND 
-NOT EXISTS (SELECT 1 FROM followers WHERE userId = $1); 
+NOT EXISTS (SELECT 1 FROM followers WHERE userId = $1 AND users.id = followers.followingUserId); 
 `;
 const queryLatestReviews = `
 SELECT showId, userId, title, username, rating, review, timestamp FROM shows_reviews
