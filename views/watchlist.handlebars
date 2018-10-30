@@ -5,7 +5,7 @@
     <h2>Watching</h2>
     <ol>
     {{#each renderData.movie.watching}}
-      <li>{{title}}<ol>On episode {{episodeswatched}}<ol/></li>
+      <li><a href = 'title/{{showid}}'>{{title}}</a><ol>On episode {{episodeswatched}}</ol></li>
     {{/each}}
     </ol>
 
@@ -14,7 +14,7 @@
     <h2>Completed</h2>
     <ol>
     {{#each renderData.movie.completed}}
-      <li>{{title}}</li>
+      <li><a href = 'title/{{showid}}'>{{title}}</a></li>
     {{/each}}
     </ol>
   </div>
@@ -22,7 +22,7 @@
     <h2>Dropped</h2>
     <ol>
     {{#each renderData.movie.dropped}}
-      <li>{{title}}<ol>On episode {{episodeswatched}}<ol/></li>
+      <li><a href = 'title/{{showid}}'>{{title}}</a><ol>On episode {{episodeswatched}}</ol></li>
     {{/each}}
     </ol>
   </div>
@@ -35,7 +35,7 @@
     <h2>Watching</h2>
     <ol>
     {{#each renderData.tv.watching}}
-      <li>{{title}}<ol>On episode {{episodeswatched}}<ol/></li>
+      <li><a href = 'title/{{showid}}'>{{title}}</a><ol>On episode {{episodeswatched}}</ol></li>
     {{/each}}
     </ol>
   </div>
@@ -43,7 +43,7 @@
     <h2>Completed</h2>
     <ol>
     {{#each renderData.tv.completed}}
-      <li>{{title}}</li>
+      <li><a href = 'title/{{showid}}'>{{title}}</a></li>
     {{/each}}
     </ol>
   </div>
@@ -51,7 +51,7 @@
     <h2>Dropped</h2>
     <ol>
     {{#each renderData.tv.dropped}}
-      <li>{{title}}<ol>On episode {{episodeswatched}}<ol/></li>
+      <li><a href = 'title/{{showid}}'>{{title}}</a><ol>On episode {{episodeswatched}}</ol></li>
     {{/each}}
     </ol>
   </div>

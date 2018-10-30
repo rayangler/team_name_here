@@ -2,7 +2,7 @@
 
 <ol>
 {{#each renderData.notfollowing}}
-  <li>{{username}}<form action="/add_follower" method="POST"><input type="hidden"
+  <li><a href = 'profile/{{id}}'>{{username}}</a><form action="/add_follower" method="POST"><input type="hidden"
   name="followinguserid" value="{{id}}"><input type="submit" value="Follow"></form></li>
 {{/each}}
 </ol>
@@ -11,7 +11,7 @@
 
 <ol>
 {{#each renderData.following}}
-  <li>{{username}}<form action="/delete_follower" method="POST"><input type="hidden"
+  <li><a href = 'profile/{{id}}'>{{username}}</a><form action="/delete_follower" method="POST"><input type="hidden"
   name="followinguserid" value="{{id}}"><input type="submit"
   value="Remove Follower"></form></li>
 {{/each}}
