@@ -107,6 +107,11 @@ JOIN users ON users.id = shows_reviews.userId
 JOIN shows ON shows.id = shows_reviews.showId
 ORDER BY timestamp DESC;
 `
+const queryWatchList = `
+SELECT * FROM shows_watchlist
+JOIN shows ON shows_watchlist.showId = shows.id
+WHERE userId = $1;
+`;
 
 // Create tables
 client.query(createUsersTable, (err, res) => {
@@ -153,7 +158,20 @@ app.get('/profile', (req, res) => {
 app.get('/test', (req, res) => {
   res.render('test');
 });
-
+app.get('/watchlist', (req, res) => {
+  if(!app.get('userId')) {
+    res.redirect('/');
+    return;
+  }
+  client.query(queryWatchList, [app.get('userId')], (errors, results) => {
+    let renderData = {tv:{dropped:[],watching:[],completed:[]}, movie:{dropped:[],watching:[],completed:[]}};
+    for(let row of results.rows){
+      let pointer = renderData[row.type.toLowerCase()][row.status.toLowerCase()];
+      pointer.push(row);
+    }
+    res.render('watchlist', {renderData});    
+  });
+});
 app.get('/reviews', (req, res) => {
   client.query(queryLatestReviews, (errors, results) => {
     if (errors) console.log(errors.stack);

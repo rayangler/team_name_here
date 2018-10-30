@@ -1,0 +1,58 @@
+<h2>Movies</h2>
+
+<div class="row">
+  <div class="column" style="background-color:#aaa;">
+    <h2>Watching</h2>
+    <ol>
+    {{#each renderData.movie.watching}}
+      <li>{{title}}<ol>On episode {{episodeswatched}}<ol/></li>
+    {{/each}}
+    </ol>
+
+  </div>
+  <div class="column" style="background-color:#bbb;">
+    <h2>Completed</h2>
+    <ol>
+    {{#each renderData.movie.completed}}
+      <li>{{title}}</li>
+    {{/each}}
+    </ol>
+  </div>
+  <div class="column" style="background-color:#ccc;">
+    <h2>Dropped</h2>
+    <ol>
+    {{#each renderData.movie.dropped}}
+      <li>{{title}}<ol>On episode {{episodeswatched}}<ol/></li>
+    {{/each}}
+    </ol>
+  </div>
+</div>
+
+<h2>TV</h2>
+
+<div class="row">
+  <div class="column" style="background-color:#aaa;">
+    <h2>Watching</h2>
+    <ol>
+    {{#each renderData.tv.watching}}
+      <li>{{title}}<ol>On episode {{episodeswatched}}<ol/></li>
+    {{/each}}
+    </ol>
+  </div>
+  <div class="column" style="background-color:#bbb;">
+    <h2>Completed</h2>
+    <ol>
+    {{#each renderData.tv.completed}}
+      <li>{{title}}</li>
+    {{/each}}
+    </ol>
+  </div>
+  <div class="column" style="background-color:#ccc;">
+    <h2>Dropped</h2>
+    <ol>
+    {{#each renderData.tv.dropped}}
+      <li>{{title}}<ol>On episode {{episodeswatched}}<ol/></li>
+    {{/each}}
+    </ol>
+  </div>
+</div>
