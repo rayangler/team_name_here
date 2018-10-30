@@ -1,0 +1,10 @@
+<div>
+    {{#each results.rows}}
+        <div>Review for: <a href='shows/{{ showid }}'>{{ title }}</a></div>
+        <div>Review by: <a href='profile/{{ userid }}'>{{ username }}</a></div>
+        <div>Rating: {{ rating }}</div>
+        <div>{{ review }}</div>
+        <div id="timestamp">{{ timestamp }}</div>
+        <br/>
+    {{/each}}
+</div>
