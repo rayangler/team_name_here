@@ -13,6 +13,6 @@
     "express-handlebars": "^3.0.0",
     "handlebars": "^4.0.12",
     "mysql": "^2.16.0",
-    "pg": "^6.1.0"
+    "pg": "^7.6.0"
   }
 }
