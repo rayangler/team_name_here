@@ -10,4 +10,26 @@
       <form action="/create_review" method="get">
           <input type="submit" value="Create Review">
       </form>
+      <br/>
+      {{#if episodeswatched}}
+      <form action="/update_watchlist" method="post" id="update_watchlist">
+          <select name="status" form="update_watchlist">
+            <option value="watching">Watching</option>
+            <option value="completed">Completed</option>
+            <option value="dropped">Dropped</option>
+          </select>
+          <br/>
+          <br/>
+          <div>Episode:<input type="text" name="episode" value="{{episodeswatched}}"> / {{episodes}}</div>
+          <br/>
+          <input type="submit" value="Update">
+      </form>
+
+      {{else}}
+      <form action="/add_to_watchlist" method="post">
+          <input type="submit" value="Add to Watchlist">
+      </form>
+
+
+      {{/if}}
 </div>

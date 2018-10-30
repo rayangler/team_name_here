@@ -128,9 +128,16 @@ SELECT * FROM shows WHERE type='Tv' ORDER BY title ASC;
 const queryMoviesList = `
 SELECT * FROM shows WHERE type='Movie' ORDER BY title ASC;
 `;
-const queryShowId = `
-SELECT * FROM shows WHERE id=$1;
+const queryShowPage = `
+SELECT * FROM shows WHERE shows.id=$1;
+`;
+const queryAddToWatchList = `INSERT INTO shows_watchlist VALUES ($1, $2, $3, $4)`
+const queryCheckWatchlist = `SELECT status, episodesWatched FROM shows_watchlist WHERE userId=$1 AND showId=$2;`
+const queryUpdateWatchList = `
+UPDATE shows_watchlist SET (status, episodesWatched) = ($1, $2)
+WHERE userId=$3 AND showId=$4;
 `
+const queryShowEpisodes = `SELECT episodes FROM shows WHERE id=$1;`
 
 // Create tables
 client.query(createUsersTable, (err, res) => {
@@ -177,6 +184,7 @@ app.get('/profile', (req, res) => {
 app.get('/test', (req, res) => {
   res.render('test');
 });
+
 app.get('/watchlist', (req, res) => {
   if(!app.get('userId')) {
     res.redirect('/');
@@ -214,6 +222,7 @@ app.get('/users', (req, res) => {
     });
   });
 });
+
 app.get('/reviews', (req, res) => {
   client.query(queryLatestReviews, (errors, results) => {
     if (errors) console.log(errors.stack);
@@ -244,18 +253,27 @@ app.get('/list/movies', (req, res) => {
 
 app.get('/title/:id', (req, res) => {
   const id = req.params.id;
+  var data = {};
   app.set('showId', id);
-  client.query(queryShowId, [id], (errors, results) => {
+  client.query(queryShowPage, [id], (errors, results) => {
     if (errors) console.log(errors.stack);
     else {
-      res.render('show_page', results.rows[0]);
+      data = results.rows[0];
+      client.query(queryCheckWatchlist, [app.get('userId'), id], (errors, results) => {
+        if(results.rowCount != 0) {
+          data.episodeswatched = results.rows[0].episodeswatched;
+          data.status = results.rows[0].status;
+        }
+        console.log(data);
+        res.render('show_page', data);
+      });
     }
   });
 });
 
 app.get('/create_review', (req, res) => {
   const showId = app.get('showId');
-  client.query(queryShowId, [showId], (errors, results) => {
+  client.query(queryShowPage, [showId], (errors, results) => {
     if (errors) console.log(errors.stack);
     else {
       res.render('create_review', results.rows[0]);
@@ -329,6 +347,43 @@ app.post('/create_review', (req, res) => {
       res.redirect('/title/' + showId);
     }
   });
+});
+
+app.post('/add_to_watchlist', (req, res) => {
+  const userId = app.get('userId');
+  const showId = app.get('showId');
+  var status = "watching"
+  var episodes = 1;
+  client.query(queryAddToWatchList, [userId, showId, status, episodes], (errors, results) => {
+    if (errors) console.log(errors.stack);
+    else {
+      console.log('Added to watchlist');
+      res.redirect('/title/' + showId);
+    }
+  });
+});
+
+function updateWatchlist(status, episodes, res) {
+  const userId = app.get('userId');
+  const showId = app.get('showId');
+  client.query(queryUpdateWatchList, [status, episodes, userId, showId], (errors, results) => {
+    if (errors) console.log(errors.stack);
+    else {
+      console.log('Updated watchlist');
+      res.redirect('/title/' + showId);
+    }
+  });
+}
+
+app.post('/update_watchlist', (req, res) => {
+  var status = req.body.status;
+  if (status == 'completed') {
+    client.query('SELECT episodes FROM shows WHERE id=$1;', [app.get('showId')], (errors, results) => {
+      updateWatchlist(status, results.rows[0].episodes, res);
+    });
+  } else {
+    updateWatchlist(status, req.body.episode, res);
+  }
 });
 
 
