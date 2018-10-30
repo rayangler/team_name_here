@@ -95,11 +95,18 @@ CREATE TABLE IF NOT EXISTS post_comments(
 const queryCreateUser = 'INSERT INTO users(username, email, isAdmin) VALUES($1, $2, $3) RETURNING id';
 const queryCreateProfile = 'INSERT INTO profiles(userId, name, profilePic, bio) VALUES($1, $2, $3, $4)';
 const queryCreateShow = 'INSERT INTO shows(title, genre, studio, synopsis, episodes, year, runtime, type) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)';
+const queryCreateReview = 'INSERT INTO shows_reviews(userId, showId, rating, review, timestamp) VALUES ($1, $2, $3, $4, $5)';
 
 // Search queries
 const queryLoginUser = 'SELECT id, isAdmin FROM users WHERE username=$1 AND email=$2'
 const queryUserData = 'SELECT username, email FROM users WHERE id = $1'
 const queryAllShows = 'SELECT * FROM Shows'
+const queryLatestReviews = `
+SELECT showId, userId, title, username, rating, review, timestamp FROM shows_reviews
+JOIN users ON users.id = shows_reviews.userId
+JOIN shows ON shows.id = shows_reviews.showId
+ORDER BY timestamp DESC;
+`
 
 // Create tables
 client.query(createUsersTable, (err, res) => {
@@ -130,7 +137,7 @@ client.query(createPostCommentsTable, (err, res) => {
 // Routing
 // Landing page
 app.get('/', (req, res) => {
-  res.render('login');
+  res.render('login'); // Renders login.handlebars
 });
 
 // Create Profile Page
@@ -138,8 +145,23 @@ app.get('/create_profile', (req, res) => {
   res.render('create_profile');
 });
 
+// Go to logged in user's profile page
 app.get('/profile', (req, res) => {
-  res.render('')
+  res.render('home');
+});
+
+app.get('/test', (req, res) => {
+  res.render('test');
+});
+
+app.get('/reviews', (req, res) => {
+  client.query(queryLatestReviews, (errors, results) => {
+    if (errors) console.log(errors.stack);
+    else {
+      console.log(results);
+      res.render('reviews', {results});
+    }
+  });
 });
 
 //Create Home Page
@@ -176,6 +198,27 @@ app.get('/home', (req, res) => {
   res.render('home', res_bod);
    }
   })
+});
+
+app.post('/test_sending_data', (req, res) => {
+  app.set('testVariable', req.body.testVariable);
+  res.redirect('/reviews');
+});
+
+app.post('/test_create_review', (req, res) => {
+  const userId = req.body.userId;
+  const showId = req.body.showId;
+  const rating = req.body.rating;
+  const review = req.body.review;
+  const timestamp = new Date().toISOString();
+  client.query(queryCreateReview, [userId, showId, rating, review, timestamp], (errors, results) => {
+    if (errors) {
+      console.log(errors.stack);
+    } else {
+      console.log('Added review');
+      res.redirect('/test');
+    }
+  });
 });
 
 
