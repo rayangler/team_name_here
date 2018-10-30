@@ -1,6 +1,7 @@
+<h1>Latest Reviews</h1>
 <div>
     {{#each results.rows}}
-        <div>Review for: <a href='shows/{{ showid }}'>{{ title }}</a></div>
+        <div>Review for: <a href='title/{{ showid }}'>{{ title }}</a></div>
         <div>Review by: <a href='profile/{{ userid }}'>{{ username }}</a></div>
         <div>Rating: {{ rating }}</div>
         <div>{{ review }}</div>

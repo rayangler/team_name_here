@@ -69,7 +69,8 @@ CREATE TABLE IF NOT EXISTS shows_reviews(
   showId INTEGER REFERENCES shows(id),
   rating INTEGER CHECK (rating > 0 AND rating <= 10),
   review TEXT,
-  timestamp TIMESTAMPTZ
+  timestamp TIMESTAMPTZ,
+  PRIMARY KEY (userId,showId)
 );`
 const createFollowersTable = `
 CREATE TABLE IF NOT EXISTS followers(
@@ -107,8 +108,8 @@ const queryAddFollowing = 'INSERT INTO followers VALUES ($1, $2)';
 const queryDeleteFollowing = 'DELETE FROM followers where userid = $1 AND followingUserId = $2';
 const queryNotFollowing = `
 SELECT * FROM users
-WHERE id != $1 AND 
-NOT EXISTS (SELECT 1 FROM followers WHERE userId = $1 AND users.id = followers.followingUserId); 
+WHERE id != $1 AND
+NOT EXISTS (SELECT 1 FROM followers WHERE userId = $1 AND users.id = followers.followingUserId);
 `;
 const queryLatestReviews = `
 SELECT showId, userId, title, username, rating, review, timestamp FROM shows_reviews
@@ -121,6 +122,15 @@ SELECT * FROM shows_watchlist
 JOIN shows ON shows_watchlist.showId = shows.id
 WHERE userId = $1;
 `;
+const queryShowsList = `
+SELECT * FROM shows WHERE type='Tv' ORDER BY title ASC;
+`;
+const queryMoviesList = `
+SELECT * FROM shows WHERE type='Movie' ORDER BY title ASC;
+`;
+const queryShowId = `
+SELECT * FROM shows WHERE id=$1;
+`
 
 // Create tables
 client.query(createUsersTable, (err, res) => {
@@ -182,9 +192,10 @@ app.get('/watchlist', (req, res) => {
       let pointer = renderData[row.type.toLowerCase()][row.status.toLowerCase()];
       pointer.push(row);
     }
-    res.render('watchlist', {renderData});    
+    res.render('watchlist', {renderData});
   });
 });
+
 app.get('/users', (req, res) => {
   if(!app.get('userId')) {
     res.redirect('/');
@@ -199,7 +210,7 @@ app.get('/users', (req, res) => {
     renderData.notfollowing = results.rows;
     client.query(queryFollowing, [app.get('userId')], (errrors, results) => {
       renderData.following = results.rows;
-      res.render('users', {renderData});    
+      res.render('users', {renderData});
     });
   });
 });
@@ -209,6 +220,45 @@ app.get('/reviews', (req, res) => {
     else {
       console.log(results);
       res.render('reviews', {results});
+    }
+  });
+});
+
+app.get('/list/shows', (req, res) => {
+  client.query(queryShowsList, (errors, results) => {
+    if (errors) console.log(errors.stack);
+    else {
+      res.render('titles', {results});
+    }
+  });
+});
+
+app.get('/list/movies', (req, res) => {
+  client.query(queryMoviesList, (errors, results) => {
+    if (errors) console.log(errors.stack);
+    else {
+      res.render('titles', {results});
+    }
+  });
+});
+
+app.get('/title/:id', (req, res) => {
+  const id = req.params.id;
+  app.set('showId', id);
+  client.query(queryShowId, [id], (errors, results) => {
+    if (errors) console.log(errors.stack);
+    else {
+      res.render('show_page', results.rows[0]);
+    }
+  });
+});
+
+app.get('/create_review', (req, res) => {
+  const showId = app.get('showId');
+  client.query(queryShowId, [showId], (errors, results) => {
+    if (errors) console.log(errors.stack);
+    else {
+      res.render('create_review', results.rows[0]);
     }
   });
 });
@@ -265,9 +315,9 @@ app.post('/add_follower', (req, res) => {
   });
 });
 
-app.post('/test_create_review', (req, res) => {
-  const userId = req.body.userId;
-  const showId = req.body.showId;
+app.post('/create_review', (req, res) => {
+  const userId = app.get('userId');
+  const showId = app.get('showId');
   const rating = req.body.rating;
   const review = req.body.review;
   const timestamp = new Date().toISOString();
@@ -276,7 +326,7 @@ app.post('/test_create_review', (req, res) => {
       console.log(errors.stack);
     } else {
       console.log('Added review');
-      res.redirect('/test');
+      res.redirect('/title/' + showId);
     }
   });
 });
