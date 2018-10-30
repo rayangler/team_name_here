@@ -101,6 +101,7 @@ const queryCreateReview = 'INSERT INTO shows_reviews(userId, showId, rating, rev
 const queryLoginUser = 'SELECT id, isAdmin FROM users WHERE username=$1 AND email=$2'
 const queryUserData = 'SELECT username, email FROM users WHERE id = $1'
 const queryAllShows = 'SELECT * FROM Shows'
+const queryFullUserInfo = 'SELECT * FROM (users Inner Join profiles ON users.id = profiles.userid) where id = $1'
 const queryLatestReviews = `
 SELECT showId, userId, title, username, rating, review, timestamp FROM shows_reviews
 JOIN users ON users.id = shows_reviews.userId
@@ -147,7 +148,21 @@ app.get('/create_profile', (req, res) => {
 
 // Go to logged in user's profile page
 app.get('/profile', (req, res) => {
-  res.render('home');
+  const userId = app.get('userId');
+  var res_bod = {};
+  client.query(queryFullUserInfo, [userId], (errors, results) => {
+    if (errors){
+      console.log('Profile generation issue');
+      console.log(errors.stack);
+    }
+    else {
+      res_bod["userurl"] = results.rows[0].profilepic;
+      res_bod["name"] = results.rows[0].name;
+      res_bod["email"] = results.rows[0].email;
+      res_bod["bio"] = results.rows[0].bio;
+    }
+    res.render('profile', res_bod);
+  });
 });
 
 app.get('/test', (req, res) => {
@@ -194,9 +209,9 @@ app.get('/home', (req, res) => {
 	        res_bod["summary"] = results.rows[randnum].summary;
 	     }
 	  res.render('home', res_bod);
-      	})
+      	});
       }
-  })
+  });
 });
 
 app.post('/test_create_review', (req, res) => {
