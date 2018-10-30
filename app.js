@@ -173,16 +173,20 @@ app.get('/', (req, res) => {
 
 // Create Profile Page
 app.get('/create_profile', (req, res) => {
+  if(!app.get('userId')) {
+    res.redirect('/');
+    return;
+  }
   res.render('create_profile');
 });
 
 // Go to logged in user's profile page
 app.get('/profile', (req, res) => {
+  if(!app.get('userId')) {
+    res.redirect('/');
+    return;
+  }
   res.render('home');
-});
-
-app.get('/test', (req, res) => {
-  res.render('test');
 });
 
 app.get('/watchlist', (req, res) => {
@@ -272,6 +276,10 @@ app.get('/title/:id', (req, res) => {
 });
 
 app.get('/create_review', (req, res) => {
+  if(!app.get('userId')) {
+    res.redirect('/');
+    return;
+  }
   const showId = app.get('showId');
   client.query(queryShowPage, [showId], (errors, results) => {
     if (errors) console.log(errors.stack);
@@ -283,6 +291,10 @@ app.get('/create_review', (req, res) => {
 
 //Create Home Page
 app.get('/home', (req, res) => {
+  if(!app.get('userId')) {
+    res.redirect('/');
+    return;
+  }
   const userId = app.get('userId');
   var res_bod = {};
   client.query(queryUserData, [userId], (errors, results) => {
@@ -310,6 +322,7 @@ app.get('/home', (req, res) => {
   res.render('home', res_bod);
   })
 });
+
 app.post('/delete_follower', (req, res) => {
   const userid = app.get('userId');
   const followinguserid = req.body.followinguserid;
@@ -321,6 +334,7 @@ app.post('/delete_follower', (req, res) => {
     res.redirect('/users');
   });
 });
+
 app.post('/add_follower', (req, res) => {
   const userid = app.get('userId');
   const followinguserid = req.body.followinguserid;
