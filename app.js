@@ -196,11 +196,9 @@ app.get('/users', (req, res) => {
       console.log(errors);
       return;
     }
-    console.log(results);
     renderData.notfollowing = results.rows;
     client.query(queryFollowing, [app.get('userId')], (errrors, results) => {
       renderData.following = results.rows;
-      console.log(results);
       res.render('users', {renderData});    
     });
   });
@@ -247,7 +245,6 @@ app.get('/home', (req, res) => {
 app.post('/delete_follower', (req, res) => {
   const userid = app.get('userId');
   const followinguserid = req.body.followinguserid;
-  console.log(queryDeleteFollowing, userid, followinguserid);
   client.query(queryDeleteFollowing, [userid, followinguserid], (errors, results) => {
     if (errors) {
       console.log(errors);
