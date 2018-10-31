@@ -184,22 +184,30 @@ app.get('/create_profile', (req, res) => {
   res.render('create_profile');
 });
 
-// Go to logged in user's profile page
 app.get('/profile', (req, res) => {
+  if (app.get('userId')){
+    res.redirect('/profile/' + app.get('userId'));
+  }
+  else {
+    res.redirect('/');
+  }
+});
+// Go to logged in user's profile page
+app.get('/profile/:id', (req, res) => {
   if(!app.get('userId')) {
     res.redirect('/');
     return;
   }
   const userId = app.get('userId');
-  if (req.param.id == undefined) {
+  if (req.params.id == undefined) {
     app.set('profileid', userId);
   }
   else{
-    app.set('profileid', req.param.id);
+    app.set('profileid', req.params.id);
   }
-  const profileid = app.get('profileid');
+  const profileId = app.get('profileid');
   var res_bod = {};
-  client.query(queryFullUserInfo, [userId], (errors, results) => {
+  client.query(queryFullUserInfo, [profileId], (errors, results) => {
     if (errors){
       console.log('Profile generation issue');
       console.log(errors.stack);
@@ -210,7 +218,7 @@ app.get('/profile', (req, res) => {
     }
     else {
       res_bod["data"] = results.rows[0];
-      client.query(queryProfile, [userId], (errors2, results2) => {
+      client.query(queryProfile, [profileId], (errors2, results2) => {
         if (errors2){
           console.log('Profile generation issue');
           console.log(errors2.stack);
@@ -221,7 +229,7 @@ app.get('/profile', (req, res) => {
 	else {
 	  res_bod["followers"] = results2.rows;
 	}
-	  client.query(queryComments, [userId], (errors3, results3) => {
+	  client.query(queryComments, [profileId], (errors3, results3) => {
 	    if (errors3) {
 	      console.log('Comments generation error');
 	      console.log(errors3.stack);
@@ -237,7 +245,6 @@ app.get('/profile', (req, res) => {
       });
     }
   });
-  //res.render('home');
 });
 
 app.get('/watchlist', (req, res) => {
