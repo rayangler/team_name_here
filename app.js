@@ -97,11 +97,15 @@ const queryCreateUser = 'INSERT INTO users(username, email, isAdmin) VALUES($1, 
 const queryCreateProfile = 'INSERT INTO profiles(userId, name, profilePic, bio) VALUES($1, $2, $3, $4)';
 const queryCreateShow = 'INSERT INTO shows(title, genre, studio, synopsis, episodes, year, runtime, type) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)';
 const queryCreateReview = 'INSERT INTO shows_reviews(userId, showId, rating, review, timestamp) VALUES ($1, $2, $3, $4, $5)';
+const queryCreateComment = 'INSERT INTO user_posts(userid, text, attachedimage) VALUES($1, $2, $3) RETURNING id'
 
 // Search queries
+const queryUserData = 'SELECT username, email FROM users WHERE id = $1'
+const queryAllShows = 'SELECT * FROM Shows'
+const queryFullUserInfo = 'SELECT * FROM (users Inner Join profiles ON users.id = profiles.userid) where id = $1'
+const queryProfile = 'SELECT * FROM (users Inner Join followers ON users.id = followers.userid) where id = $1'
+const queryComments = 'SELECT * from user_posts where userid = $1'
 const queryLoginUser = 'SELECT id, isAdmin FROM users WHERE username=$1 AND email=$2';
-const queryUserData = 'SELECT username, email FROM users WHERE id = $1';
-const queryAllShows = 'SELECT * FROM Shows';
 const queryFollowing = 'SELECT * FROM users JOIN FOLLOWERS ON followingUserId = id WHERE userId = $1';
 const queryCheckFollowing = 'SELECT * FROM followers WHERE userId = $1 AND followingUserId = $2';
 const queryAddFollowing = 'INSERT INTO followers VALUES ($1, $2)';
@@ -180,13 +184,67 @@ app.get('/create_profile', (req, res) => {
   res.render('create_profile');
 });
 
-// Go to logged in user's profile page
 app.get('/profile', (req, res) => {
+  if (app.get('userId')){
+    res.redirect('/profile/' + app.get('userId'));
+  }
+  else {
+    res.redirect('/');
+  }
+});
+// Go to logged in user's profile page
+app.get('/profile/:id', (req, res) => {
   if(!app.get('userId')) {
     res.redirect('/');
     return;
   }
-  res.render('home');
+  const userId = app.get('userId');
+  if (req.params.id == undefined) {
+    app.set('profileid', userId);
+  }
+  else{
+    app.set('profileid', req.params.id);
+  }
+  const profileId = app.get('profileid');
+  var res_bod = {};
+  client.query(queryFullUserInfo, [profileId], (errors, results) => {
+    if (errors){
+      console.log('Profile generation issue');
+      console.log(errors.stack);
+    }
+    else if (results.rows.length == 0){
+      console.log('Error');
+      res.redirect('/');
+    }
+    else {
+      res_bod["data"] = results.rows[0];
+      client.query(queryProfile, [profileId], (errors2, results2) => {
+        if (errors2){
+          console.log('Profile generation issue');
+          console.log(errors2.stack);
+        }
+        else if (results2.rows.length == 0){
+          console.log('No Followers');
+        }
+	else {
+	  res_bod["followers"] = results2.rows;
+	}
+	  client.query(queryComments, [profileId], (errors3, results3) => {
+	    if (errors3) {
+	      console.log('Comments generation error');
+	      console.log(errors3.stack);
+	    }
+	    else if (results3.rows.length == 0){
+	      console.log("No comments");	
+	    }
+	    else{
+	      res_bod["comments"] = results3.rows;
+	    }
+            res.render('profile', {res_bod});
+	  });
+      });
+    }
+  });
 });
 
 app.get('/watchlist', (req, res) => {
@@ -297,30 +355,48 @@ app.get('/home', (req, res) => {
   }
   const userId = app.get('userId');
   var res_bod = {};
-  client.query(queryUserData, [userId], (errors, results) => {
-  if (errors) {
+  client.query(queryUserData, [userId], (errors1, results1) => {
+    if (errors1) {
       console.log('Not Logged In');
-      console.log(errors.stack);
-    } else {
-      res_bod["username"] = results.rows[0].username;
-      res_bod["theemail"] = results.rows[0].email;
-   }
-  })
-  client.query(queryAllShows, (errors, results) => {
-  if (errors) {
-      console.log('Failed to acquire shows');
-      console.log(errors.stack);
-    } else {
-      console.log(results.rows.length);
-      randnum = Math.floor(Math.random() * results.rows.length);
-      res_bod["showid"] = results.rows[randnum].id;
-      res_bod["randomshowtitle"] = results.rows[randnum].title;
-      res_bod["genre"] = results.rows[randnum].genre;
-      res_bod["episodes"] = results.rows[randnum].episodes;
-      res_bod["summary"] = results.rows[randnum].summary;
-   }
-  res.render('home', res_bod);
-  })
+      console.log(errors1.stack);
+    }
+      else if (results1.rows.length == 0){
+        console.log('Error');
+        res.redirect('/');
+      }
+      else {
+        res_bod["username"] = results1.rows[0].username;
+        res_bod["theemail"] = results1.rows[0].email;
+	client.query(queryAllShows, (errors, results) => {
+	  if (errors) {
+	      console.log('Failed to acquire shows');
+	      console.log(errors.stack);
+	    } else {
+	        console.log(results.rows.length);
+	        randnum = Math.floor(Math.random() * results.rows.length);
+	        res_bod["showid"] = results.rows[randnum].id;
+	        res_bod["randomshowtitle"] = results.rows[randnum].title;
+	        res_bod["genre"] = results.rows[randnum].genre;
+	        res_bod["episodes"] = results.rows[randnum].episodes;
+	        res_bod["summary"] = results.rows[randnum].summary;
+	     }
+	  res.render('home', res_bod);
+      	});
+      }
+  });
+});
+
+app.post('/postcomment', (req, res) => {
+  const userid = app.get('userId');
+  const comtext = req.body.commenttext;
+  const imglink = req.body.imagelink;
+  client.query(queryCreateComment, [userid, comtext, imglink], (errors, results) => {
+    if (errors) {
+      console.log(errors);
+      return;
+    }
+    res.redirect('/profile');
+  });
 });
 
 app.post('/delete_follower', (req, res) => {
