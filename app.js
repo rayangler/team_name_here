@@ -189,8 +189,8 @@ app.get('/profile', (req, res) => {
   else{
     app.set('profileid', req.param.id);
   }
-  console.log(req.param.id);
-  var res_bod = {comments:[]};
+  const profileid = app.get('profileid');
+  var res_bod = {};
   client.query(queryFullUserInfo, [userId], (errors, results) => {
     if (errors){
       console.log('Profile generation issue');
@@ -201,10 +201,7 @@ app.get('/profile', (req, res) => {
       res.redirect('/');
     }
     else {
-      res_bod["userurl"] = results.rows[0].profilepic;
-      res_bod["name"] = results.rows[0].name;
-      res_bod["email"] = results.rows[0].email;
-      res_bod["bio"] = results.rows[0].bio;
+      res_bod["data"] = results.rows[0];
       client.query(queryProfile, [userId], (errors2, results2) => {
         if (errors2){
           console.log('Profile generation issue');
@@ -214,10 +211,7 @@ app.get('/profile', (req, res) => {
           console.log('No Followers');
         }
 	else {
-	  res_bod["followers"] = "";
-	  for(var i = 0; i < results2.rows.length; i++) {
-          	res_bod["followers"] = res_bod["followers"] + results2.rows[i].followinguserid + "\n";
-	  }
+	  res_bod["followers"] = results2.rows;
 	}
 	  client.query(queryComments, [userId], (errors3, results3) => {
 	    if (errors3) {
@@ -228,12 +222,9 @@ app.get('/profile', (req, res) => {
 	      console.log("No comments");	
 	    }
 	    else{
-	      console.log(results3.rows);
-	      for(var i = 0; i <results3.rows.length; i++){
-	        res_bod["comments"].push(results3.rows[i]);
-	      }
+	      res_bod["comments"] = results3.rows;
 	    }
-            res.render('profile', res_bod);
+            res.render('profile', {res_bod});
 	  });
       });
     }
