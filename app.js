@@ -15,7 +15,7 @@ app.use(express.static(path.join(__dirname, '/public'))); // Used to access css 
 // secretpassword == password
 // database.server.com:3211 == localhost
 // mydb == tnh_db
-const connectionString = 'postgresql://tnh_superuser:password@localhost/tnh_db'
+const connectionString = 'postgresql://tnh_superuser:password@localhost:5000/tnh_db'
 const client = new Client({
   connectionString: connectionString,
 });
@@ -247,7 +247,6 @@ app.get('/watchlist', (req, res) => {
     }
     let renderData = {tv:{dropped:[],watching:[],completed:[]}, movie:{dropped:[],watching:[],completed:[]}};
     for(let row of results.rows){
-      print(row);
       let pointer = renderData[row.type.toLowerCase()][row.status.toLowerCase()];
       pointer.push(row);
     }
