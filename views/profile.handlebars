@@ -1,5 +1,18 @@
 <div> <img src = "{{userurl}}" width = "200" height = "200" align = "top"/> 
-<textarea readonly style="height:200px; width: 200px; border: 10px; resize: none; overflow: auto;"> Followers: &#13;&#10;{{followers}}; </textarea></div>
+<textarea readonly style="height:200px; width: 200px; border-style: solid; border-width: 3px; resize: none; overflow: auto;"> Followers: &#13;&#10;{{followers}} </textarea></div>
 <div style = "font-size: 20px; margin-left: 20px; font-weight: bold"> {{name}} </div>
 <div style = "font-size: 16px; margin-left: 20px"> {{email}} </div>
 <div style = "font-size: 16px; margin-left: 20px"> {{bio}} </div>
+<div style = "font-size:30px; margin-left: 200px; font-weight:bold"> Comments </div>
+<form action = "/postcomment" method = "post" style = "margin-left: 200px">
+	<textarea name = "commenttext" placeholder = "Write a new comment" style="resize:none; overflow: auto; height: 100px; width: 800px; border-style:solid; border-width: 2px;"></textarea>
+	<textarea name = "imagelink" placeholder = "Enter a img url" style="resize:none; overflow: auto; height: 50px; width: 200px; border-style:solid; border-width: 2px;"></textarea>
+	</br>
+	<input type="submit" style = "color: white; background-color: blue" value="Submit Comment">
+</form>
+<textarea readonly style="resize:none; overflow: auto; height: 600px; width: 1000px; border-style:solid; border-width: 5px; margin-left: 200px"> 
+{{#each res_bod.comments}}
+	<div> {{text}} </div>
+	<img src={{attachedimage}}/>
+{{/each}}
+</textarea>
