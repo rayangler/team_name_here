@@ -2,172 +2,21 @@ const port = 3000;
 const express = require('express');
 const path = require('path')
 const hb  = require('express-handlebars');
-const { Client } = require('pg');
 const app = express();
+
+const db = require('./database');
+const Follower = require('./database/models/follower');
+const Post = require('./database/models/post');
+const Profile = require('./database/models/profile');
+const Review = require('./database/models/review');
+const Show = require('./database/models/show');
+const User = require('./database/models/user');
+const Watchlist = require('./database/models/watchlist');
 
 app.engine('handlebars', hb({defaultLayout: 'main'}));
 app.set('view engine', 'handlebars');
 app.use(express.urlencoded());
 app.use(express.static(path.join(__dirname, '/public'))); // Used to access css file(s)
-
-// Sample connection string from docs: 'postgresql://dbuser:secretpassword@database.server.com:3211/mydb'
-// dbuser == tnh_superuser
-// secretpassword == password
-// database.server.com:3211 == localhost
-// mydb == tnh_db
-const connectionString = 'postgresql://tnh_superuser:password@localhost/tnh_db'
-const client = new Client({
-  connectionString: connectionString,
-});
-
-client.connect((err) => {
-  if (err) {
-    console.log('Connection error', err.stack);
-  } else {
-    console.log('Connected to database');
-  }
-});
-
-// Create tables
-const createUsersTable = `
-CREATE TABLE IF NOT EXISTS users(
-  id SERIAL PRIMARY KEY,
-  username VARCHAR(255) UNIQUE,
-  email VARCHAR(255) UNIQUE,
-  isAdmin BOOLEAN
-);`
-// Made pics TEXT for now because I wasn't sure how we wanted to store them. Figured we could just store their URLs.
-const createProfilesTable = `
-CREATE TABLE IF NOT EXISTS profiles(
-  userId INTEGER REFERENCES users(id),
-  name VARCHAR(255),
-  profilePic TEXT,
-  bio TEXT
-);`
-const createShowsTable = `
-CREATE TABLE IF NOT EXISTS shows(
-  id SERIAL PRIMARY KEY,
-  title VARCHAR(255),
-  genre VARCHAR(255),
-  studio VARCHAR(255),
-  synopsis TEXT,
-  episodes INTEGER,
-  year INTEGER,
-  runtime INTEGER,
-  type VARCHAR(255)
-);`
-const createShowsWatchlistTable = `
-CREATE TABLE IF NOT EXISTS shows_watchlist(
-  userId INTEGER REFERENCES users(id),
-  showId INTEGER REFERENCES shows(id),
-  status VARCHAR(255),
-  episodesWatched INTEGER
-);`
-const createShowsReviewsTable = `
-CREATE TABLE IF NOT EXISTS shows_reviews(
-  userId INTEGER REFERENCES users(id),
-  showId INTEGER REFERENCES shows(id),
-  rating INTEGER CHECK (rating > 0 AND rating <= 10),
-  review TEXT,
-  timestamp TIMESTAMPTZ,
-  PRIMARY KEY (userId,showId)
-);`
-const createFollowersTable = `
-CREATE TABLE IF NOT EXISTS followers(
-  userId INTEGER REFERENCES users(id),
-  followingUserId INTEGER REFERENCES users(id) CHECK (followingUserId != userId)
-);`
-const createUserPostsTable = `
-CREATE TABLE IF NOT EXISTS user_posts(
-  id SERIAL PRIMARY KEY,
-  userId INTEGER REFERENCES users(id),
-  text TEXT,
-  attachedImage TEXT
-);`
-const createPostCommentsTable = `
-CREATE TABLE IF NOT EXISTS post_comments(
-  userId INTEGER REFERENCES users(id),
-  postId INTEGER REFERENCES user_posts(id),
-  text TEXT,
-  attachedImage TEXT
-);`
-
-// Creation queries
-const queryCreateUser = 'INSERT INTO users(username, email, isAdmin) VALUES($1, $2, $3) RETURNING id';
-const queryCreateProfile = 'INSERT INTO profiles(userId, name, profilePic, bio) VALUES($1, $2, $3, $4)';
-const queryCreateShow = 'INSERT INTO shows(title, genre, studio, synopsis, episodes, year, runtime, type) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)';
-const queryCreateReview = 'INSERT INTO shows_reviews(userId, showId, rating, review, timestamp) VALUES ($1, $2, $3, $4, $5)';
-const queryCreateComment = 'INSERT INTO user_posts(userid, text, attachedimage) VALUES($1, $2, $3) RETURNING id'
-
-// Search queries
-const queryUserData = 'SELECT username, email FROM users WHERE id = $1'
-const queryAllShows = 'SELECT * FROM Shows'
-const queryFullUserInfo = 'SELECT * FROM (users Inner Join profiles ON users.id = profiles.userid) where id = $1'
-const queryProfile = 'SELECT * FROM (users Inner Join followers ON users.id = followers.userid) where id = $1'
-const queryComments = 'SELECT * from user_posts where userid = $1'
-const queryLoginUser = 'SELECT id, isAdmin FROM users WHERE username=$1 AND email=$2';
-const queryFollowing = 'SELECT * FROM users JOIN FOLLOWERS ON followingUserId = id WHERE userId = $1';
-const queryCheckFollowing = 'SELECT * FROM followers WHERE userId = $1 AND followingUserId = $2';
-const queryAddFollowing = 'INSERT INTO followers VALUES ($1, $2)';
-const queryDeleteFollowing = 'DELETE FROM followers where userid = $1 AND followingUserId = $2';
-const queryNotFollowing = `
-SELECT * FROM users
-WHERE id != $1 AND
-NOT EXISTS (SELECT 1 FROM followers WHERE userId = $1 AND users.id = followers.followingUserId);
-`;
-const queryLatestReviews = `
-SELECT showId, userId, title, username, rating, review, timestamp FROM shows_reviews
-JOIN users ON users.id = shows_reviews.userId
-JOIN shows ON shows.id = shows_reviews.showId
-ORDER BY timestamp DESC;
-`
-const queryWatchList = `
-SELECT * FROM shows_watchlist
-JOIN shows ON shows_watchlist.showId = shows.id
-WHERE userId = $1;
-`;
-const queryShowsList = `
-SELECT * FROM shows WHERE type='Tv' ORDER BY title ASC;
-`;
-const queryMoviesList = `
-SELECT * FROM shows WHERE type='Movie' ORDER BY title ASC;
-`;
-const queryShowPage = `
-SELECT * FROM shows WHERE shows.id=$1;
-`;
-const queryAddToWatchList = `INSERT INTO shows_watchlist VALUES ($1, $2, $3, $4)`
-const queryCheckWatchlist = `SELECT status, episodesWatched FROM shows_watchlist WHERE userId=$1 AND showId=$2;`
-const queryUpdateWatchList = `
-UPDATE shows_watchlist SET (status, episodesWatched) = ($1, $2)
-WHERE userId=$3 AND showId=$4;
-`
-const queryShowEpisodes = `SELECT episodes FROM shows WHERE id=$1;`
-
-// Create tables
-client.query(createUsersTable, (err, res) => {
-  if (err) console.log(err.stack);
-});
-client.query(createProfilesTable, (err, res) => {
-  if (err) console.log(err.stack);
-});
-client.query(createShowsTable, (err, res) => {
-  if (err) console.log(err.stack);
-});
-client.query(createShowsWatchlistTable, (err, res) => {
-  if (err) console.log(err.stack);
-});
-client.query(createShowsReviewsTable, (err, res) => {
-  if (err) console.log(err.stack);
-});
-client.query(createFollowersTable, (err, res) => {
-  if (err) console.log(err.stack);
-});
-client.query(createUserPostsTable, (err, res) => {
-  if (err) console.log(err.stack);
-});
-client.query(createPostCommentsTable, (err, res) => {
-  if (err) console.log(err.stack);
-});
 
 // Routing
 // Landing page
@@ -207,44 +56,30 @@ app.get('/profile/:id', (req, res) => {
   }
   const profileId = app.get('profileid');
   var res_bod = {};
-  client.query(queryFullUserInfo, [profileId], (errors, results) => {
-    if (errors){
-      console.log('Profile generation issue');
-      console.log(errors.stack);
+  Profile.findOne({userId:profileId}).populate("userId").exec((err, result)=>{
+    if (err || !result) {
+      console.log(err);
+      res.redirect("/");
+      return;
     }
-    else if (results.rows.length == 0){
-      console.log('Error');
-      res.redirect('/');
-    }
-    else {
-      res_bod["data"] = results.rows[0];
-      client.query(queryProfile, [profileId], (errors2, results2) => {
-        if (errors2){
-          console.log('Profile generation issue');
-          console.log(errors2.stack);
+    res_bod["data"] = result; 
+    Follower.find({followingUserId:profileId}).populate("userId").exec((followerErr, followerResults) => {
+      if (followerErr) {
+        console.log(followerErr);
+        return;
+      }
+      res_bod["followers"] = followerResults;
+      Post.find({userId:profileId}, (postErr, postResults)=>{
+        if (postErr) {
+          console.log(postErr);
+          return;
         }
-        else if (results2.rows.length == 0){
-          console.log('No Followers');
-        }
-	else {
-	  res_bod["followers"] = results2.rows;
-	}
-	  client.query(queryComments, [profileId], (errors3, results3) => {
-	    if (errors3) {
-	      console.log('Comments generation error');
-	      console.log(errors3.stack);
-	    }
-	    else if (results3.rows.length == 0){
-	      console.log("No comments");	
-	    }
-	    else{
-	      res_bod["comments"] = results3.rows;
-	    }
-            res.render('profile', {res_bod});
-	  });
+        res_bod["comments"] = postResults;
+        console.log(res_bod);
+        res.render("profile", {res_bod});
       });
-    }
-  });
+    });
+  }); 
 });
 
 app.get('/watchlist', (req, res) => {
@@ -252,17 +87,21 @@ app.get('/watchlist', (req, res) => {
     res.redirect('/');
     return;
   }
-  client.query(queryWatchList, [app.get('userId')], (errors, results) => {
-    if (errors) {
-      console.log(errors);
+  Watchlist.find({userId:app.get("userId")}).populate("showId").exec((err, results) => {
+    if (err) {
+      console.log(err);
       return;
     }
-    let renderData = {tv:{dropped:[],watching:[],completed:[]}, movie:{dropped:[],watching:[],completed:[]}};
-    for(let row of results.rows){
-      let pointer = renderData[row.type.toLowerCase()][row.status.toLowerCase()];
+    const renderData = {tv:{dropped:[],watching:[],completed:[]}, movie:{dropped:[],watching:[],completed:[]}};
+    for(const result of results) {
+      const pointer = renderData[result.showId.type.toLowerCase()][result.status.toLowerCase()];
+      const row = {};
+      row.showId = result.showId._id;
+      row.title = result.showId.title;
+      row.episodeswatched = result.episodesWatched;
       pointer.push(row);
     }
-    res.render('watchlist', {renderData});
+    res.render("watchlist", {renderData});
   });
 });
 
@@ -272,44 +111,90 @@ app.get('/users', (req, res) => {
     return;
   }
   let renderData = {};
-  client.query(queryNotFollowing, [app.get('userId')], (errors, results) => {
-    if (errors) {
-      console.log(errors);
+  Follower.find({userId:app.get("userId")}).populate("followingUserId").exec((err, results) => {
+    if (err) {
+      console.log(err);
       return;
     }
-    renderData.notfollowing = results.rows;
-    client.query(queryFollowing, [app.get('userId')], (errrors, results) => {
-      renderData.following = results.rows;
-      res.render('users', {renderData});
+    const followerIds = [];
+    const rows = [];
+    for (const result of results) {
+      followerIds.push(result.followingUserId._id);
+      const row = {};
+      row.id = result.followingUserId._id;
+      row.username = result.followingUserId.username;
+      row.email = result.followingUserId.email;
+      row.isadmin = result.followingUserId.isAdmin;
+      rows.push(row);
+    }
+    followerIds.push(app.get("userId"));
+    renderData.following = rows;
+    User.find({_id:{$nin:followerIds}}, (userErr, userResults) => {
+      if (userErr) {
+        return;
+      }
+      const userRows = [];
+      for (const userResult of userResults) {
+        const userRow = {}; 
+        userRow.id = userResult._id;
+        userRow.username = userResult.username;
+        userRow.email = userResult.email;
+        userRow.isadmin = userResult.isAdmin;
+        userRows.push(userRow);
+      }
+      renderData.notfollowing = userRows;
+      res.render("users", {renderData})
     });
   });
 });
 
 app.get('/reviews', (req, res) => {
-  client.query(queryLatestReviews, (errors, results) => {
-    if (errors) console.log(errors.stack);
-    else {
-      console.log(results);
-      res.render('reviews', {results});
+  Review.find({}).populate("userId", "username").populate("showId",
+      "title").sort({timestamp:-1}).exec((err, reviewResults) => {
+    if (err) {
+      console.log(err);
+      return;
     }
+    const data = [];
+    for(const reviewResult of reviewResults) {
+      const row = {};
+      row.showId = reviewResult.showId._id;
+      row.userId = reviewResult.userId._id;
+      row.title = reviewResult.showId.title;
+      row.username = reviewResult.userId.username;
+      row.rating = reviewResult.rating;
+      row.review = reviewResult.review;
+      row.timestamp = reviewResult.timestamp;
+      data.push(row);
+    }
+    const results = {};
+    results.rows = data;
+    console.log(results);
+    res.render("reviews", {results});
   });
 });
 
 app.get('/list/shows', (req, res) => {
-  client.query(queryShowsList, (errors, results) => {
-    if (errors) console.log(errors.stack);
-    else {
-      res.render('titles', {results});
+  Show.find({type:"Tv"}, (err, movies) => {
+    if (err) {
+      console.log(err);
+      return;
     }
+    const results = {};
+    results.rows = movies;
+    res.render("titles", {results});
   });
 });
 
 app.get('/list/movies', (req, res) => {
-  client.query(queryMoviesList, (errors, results) => {
-    if (errors) console.log(errors.stack);
-    else {
-      res.render('titles', {results});
+  Show.find({type:"Movie"}, (err, movies) => {
+    if (err) {
+      console.log(err);
+      return;
     }
+    const results = {};
+    results.rows = movies;
+    res.render("titles", {results});
   });
 });
 
@@ -317,19 +202,24 @@ app.get('/title/:id', (req, res) => {
   const id = req.params.id;
   var data = {};
   app.set('showId', id);
-  client.query(queryShowPage, [id], (errors, results) => {
-    if (errors) console.log(errors.stack);
-    else {
-      data = results.rows[0];
-      client.query(queryCheckWatchlist, [app.get('userId'), id], (errors, results) => {
-        if(results.rowCount != 0) {
-          data.episodeswatched = results.rows[0].episodeswatched;
-          data.status = results.rows[0].status;
-        }
-        console.log(data);
-        res.render('show_page', data);
-      });
+  Show.findOne({_id:id}, (err, result) => {
+    if (err || !result) {
+      console.log(err);
+      return;
     }
+    data = result;
+    Watchlist.findOne({userId:app.get("userId"), showId:id}, "status episodesWatched", (watchErr, watchResult) => {
+      if (watchErr) {
+        console.log(watchErr);
+        return;
+      }
+      if (watchResult) {
+        data.episodeswatched = watchResult.episodesWatched;
+        data.status = watchResult.status;
+      }
+      console.log(data);
+      res.render("show_page", data); 
+    });
   });
 });
 
@@ -339,11 +229,12 @@ app.get('/create_review', (req, res) => {
     return;
   }
   const showId = app.get('showId');
-  client.query(queryShowPage, [showId], (errors, results) => {
-    if (errors) console.log(errors.stack);
-    else {
-      res.render('create_review', results.rows[0]);
+  Show.findOne({_id:showId}, (err, result) => {
+    if (err || !result) {
+      console.log(err);
+      return;
     }
+    res.render("create_review", result);
   });
 });
 
@@ -355,34 +246,34 @@ app.get('/home', (req, res) => {
   }
   const userId = app.get('userId');
   var res_bod = {};
-  client.query(queryUserData, [userId], (errors1, results1) => {
-    if (errors1) {
-      console.log('Not Logged In');
-      console.log(errors1.stack);
+  User.findOne({_id:userId}, (err, result) => {
+    if (err || !result) {
+      console.log("Not logged in");
+      console.log(err);
+      return;
     }
-      else if (results1.rows.length == 0){
-        console.log('Error');
-        res.redirect('/');
+    res_bod["username"] = result.username; 
+    res_bod["theemail"] = result.email; 
+    Show.find({}, (showErr, showResults) => {
+      if(showErr || !showResults) {
+        console.log("Failed to acquire shows");
+        console.log(showErr);
+        return;
       }
-      else {
-        res_bod["username"] = results1.rows[0].username;
-        res_bod["theemail"] = results1.rows[0].email;
-	client.query(queryAllShows, (errors, results) => {
-	  if (errors) {
-	      console.log('Failed to acquire shows');
-	      console.log(errors.stack);
-	    } else {
-	        console.log(results.rows.length);
-	        randnum = Math.floor(Math.random() * results.rows.length);
-	        res_bod["showid"] = results.rows[randnum].id;
-	        res_bod["randomshowtitle"] = results.rows[randnum].title;
-	        res_bod["genre"] = results.rows[randnum].genre;
-	        res_bod["episodes"] = results.rows[randnum].episodes;
-	        res_bod["summary"] = results.rows[randnum].summary;
-	     }
-	  res.render('home', res_bod);
-      	});
+      console.log(showResults);
+      console.log(showResults.length);
+      randnum = Math.floor(Math.random() * showResults.length);
+      if (showResults.length === 0) {
+        res.render("home", res_bod);
+        return;
       }
+      res_bod["showid"] = showResults[randnum]._id;
+      res_bod["randomshowtitle"] = showResults[randnum].title;
+      res_bod["genre"] = showResults[randnum].genre;
+      res_bod["episodes"] = showResults[randnum].episodes;
+      res_bod["summary"] = showResults[randnum].summary;
+      res.render("home", res_bod);
+    });
   });
 });
 
@@ -390,36 +281,38 @@ app.post('/postcomment', (req, res) => {
   const userid = app.get('userId');
   const comtext = req.body.commenttext;
   const imglink = req.body.imagelink;
-  client.query(queryCreateComment, [userid, comtext, imglink], (errors, results) => {
-    if (errors) {
-      console.log(errors);
+  Post.create({userId:userid, text:comtext, attachedImage:imglink}, (err, result) => {
+    if (err) {
+      console.log(err);
       return;
     }
-    res.redirect('/profile');
+    res.redirect("/profile");
   });
 });
 
 app.post('/delete_follower', (req, res) => {
   const userid = app.get('userId');
   const followinguserid = req.body.followinguserid;
-  client.query(queryDeleteFollowing, [userid, followinguserid], (errors, results) => {
-    if (errors) {
-      console.log(errors);
+  Follower.deleteOne({userId:userid, followingUserId:followinguserid}, (err) => {
+    if (err) {
+      console.log(err);
       return;
     }
-    res.redirect('/users');
+    console.log("Removed follower");
+    res.redirect("/users");
   });
 });
 
 app.post('/add_follower', (req, res) => {
   const userid = app.get('userId');
   const followinguserid = req.body.followinguserid;
-  client.query(queryAddFollowing, [userid, followinguserid], (errors, results) => {
-    if (errors) {
-      console.log(errors);
+  Follower.create({userId:userid, followingUserId:followinguserid}, (err, result) => {
+    if (err) {
+      console.log(err);
       return;
     }
-    res.redirect('/users');
+    console.log("Added follower");
+    res.redirect("/users");
   });
 });
 
@@ -429,13 +322,13 @@ app.post('/create_review', (req, res) => {
   const rating = req.body.rating;
   const review = req.body.review;
   const timestamp = new Date().toISOString();
-  client.query(queryCreateReview, [userId, showId, rating, review, timestamp], (errors, results) => {
-    if (errors) {
-      console.log(errors.stack);
-    } else {
-      console.log('Added review');
-      res.redirect('/title/' + showId);
+  Review.create({userId:userId, showId:showId, rating:rating, review:review}, (err, result) => {
+    if (err) {
+      console.log(err);
+      return;
     }
+    console.log("Added review");
+    res.redirect("/title/" + showId);
   });
 });
 
@@ -444,32 +337,37 @@ app.post('/add_to_watchlist', (req, res) => {
   const showId = app.get('showId');
   var status = "watching"
   var episodes = 1;
-  client.query(queryAddToWatchList, [userId, showId, status, episodes], (errors, results) => {
-    if (errors) console.log(errors.stack);
-    else {
-      console.log('Added to watchlist');
-      res.redirect('/title/' + showId);
+  Watchlist.create({userId:userId, showId:showId, status:status, episodes:episodes}, (err, result) => {
+    if (err) {
+      console.log(err);
+      return;
     }
+    console.log("Added to watchlist");
+    res.redirect("/title/" + showId);
   });
 });
 
 function updateWatchlist(status, episodes, res) {
   const userId = app.get('userId');
   const showId = app.get('showId');
-  client.query(queryUpdateWatchList, [status, episodes, userId, showId], (errors, results) => {
-    if (errors) console.log(errors.stack);
-    else {
-      console.log('Updated watchlist');
-      res.redirect('/title/' + showId);
+  Watchlist.updateOne({userId:userId, showId:showId}, {status:status, episodes:episodes}, (err, result) => {
+    if (err) {
+      console.log(err);
+      return;
     }
+    res.redirect("/title/" + showId);
   });
 }
 
 app.post('/update_watchlist', (req, res) => {
   var status = req.body.status;
   if (status == 'completed') {
-    client.query('SELECT episodes FROM shows WHERE id=$1;', [app.get('showId')], (errors, results) => {
-      updateWatchlist(status, results.rows[0].episodes, res);
+    Show.findOne({_id:app.get("showId")}, "episodes", (err, result) => {
+      if (err || !result) {
+        console.log(err);
+        return;
+      }
+      updateWatchlist(status, result.episodes, res);
     });
   } else {
     updateWatchlist(status, req.body.episode, res);
@@ -481,24 +379,22 @@ app.post('/update_watchlist', (req, res) => {
 app.post('/login_user', (req, res) => {
   const username = req.body.username1;
   const email = req.body.email1;
-  client.query(queryLoginUser, [username, email], (errors, results) => {
-    if (errors) {
-      console.log('Error logging in');
-      console.log(errors.stack);
+  User.findOne({username:username, email:email}, (err, result) => {
+    if (err) {
+      console.log(err);
+      return;
     }
-    else if (results.rows.length == 0){
-      console.log('Invalid UserName or email');
+    if (!result) {
+      console.log("Invalid username or email");
       res.redirect('/');
-    }else {
-      var userId = results.rows[0].id;
-      var isAdmin = results.rows[0].isadmin;
-      console.log('Logged in: ' + username);
-      console.log('User id: ' + userId);
-      console.log('Admin User: ' + isAdmin);
-      app.set('userId', userId); // Allows the app to remember the user's id
-      app.set('isAdmin', isAdmin); // Remembers the user's admin status
-      res.redirect('/home');
+      return;
     }
+    console.log('Logged in: ' + username);
+    console.log('User id: ' + result._id);
+    console.log('Admin User: ' + result.isAdmin);
+    app.set('userId', result._id); // Allows the app to remember the user's id
+    app.set('isAdmin', result.isAdmin); // Remembers the user's admin status
+    res.redirect('/home');
   });
 });
 
@@ -506,15 +402,15 @@ app.post('/login_user', (req, res) => {
 app.post('/create_user', (req, res) => {
   const username = req.body.username2;
   const email = req.body.email2;
-  const isAdmin = req.body.isAdmin;
-  client.query(queryCreateUser, [username, email, isAdmin], (errors, results) => {
-    if (errors) {
-      console.log('Error creating user');
-    } else {
-      console.log('User created')
-      app.set('userId', results.rows[0].id); // Remembers the user's id
-      res.redirect('/create_profile'); // Sends the new user to create their profile.
+  const isAdmin = req.body.isAdmin || 'false';
+  User.create({username:username, email:email, isAdmin:isAdmin.toLowerCase()}, (err, result) => {
+    if (err) {
+      console.log(err);
+      return;
     }
+    console.log("User created");
+    app.set('userId', result._id); // Remembers the user's id
+    res.redirect('/create_profile'); // Sends the new user to create their profile.
   });
 });
 
@@ -524,13 +420,13 @@ app.post('/create_profile', (req, res) => {
   const name = req.body.name;
   const profilePic = req.body.profilePic;
   const bio = req.body.bio;
-  client.query(queryCreateProfile, [userId, name, profilePic, bio], (errors, results) => {
-    if (errors) {
-      console.log('Error creating profile');
-    } else {
-      console.log('Profile created')
-      res.redirect('/'); // Redirects to home page
+  Profile.create({userId:userId, name:name, profilePic:profilePic, bio:bio}, (err, result) => {
+    if (err) {
+      console.log(err);
+      return;
     }
+    console.log("Profile created");
+    res.redirect('/'); // Redirects to home page
   });
 });
 
