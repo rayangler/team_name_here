@@ -101,6 +101,7 @@ app.get('/watchlist', (req, res) => {
       row.episodeswatched = result.episodesWatched;
       pointer.push(row);
     }
+    console.log(renderData.tv.watching[2]);
     res.render("watchlist", {renderData});
   });
 });
@@ -208,7 +209,7 @@ app.get('/title/:id', (req, res) => {
       return;
     }
     data = result;
-    Watchlist.findOne({userId:app.get("userId"), showId:id}, "status episodesWatched", (watchErr, watchResult) => {
+    Watchlist.findOne({userId:app.get("userId"), showId:result._id}, "status episodesWatched", (watchErr, watchResult) => {
       if (watchErr) {
         console.log(watchErr);
         return;
@@ -217,7 +218,6 @@ app.get('/title/:id', (req, res) => {
         data.episodeswatched = watchResult.episodesWatched;
         data.status = watchResult.status;
       }
-      console.log(data);
       res.render("show_page", data); 
     });
   });
@@ -337,7 +337,7 @@ app.post('/add_to_watchlist', (req, res) => {
   const showId = app.get('showId');
   var status = "watching"
   var episodes = 1;
-  Watchlist.create({userId:userId, showId:showId, status:status, episodes:episodes}, (err, result) => {
+  Watchlist.create({userId:userId, showId:showId, status:status, episodesWatched:episodes}, (err, result) => {
     if (err) {
       console.log(err);
       return;
