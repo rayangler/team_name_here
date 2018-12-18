@@ -8,4 +8,4 @@
 FROM shows;`
 
 ### mongodb ### 
-1. mongoimport -d team_name_here -c shows --type CSV --fields=extraid,title,genre,studio,synopsis,episodes,year,runtime,type --file shows.csv 
+1. Execute `mongoimport -d team_name_here -c shows --type CSV --fields=extraid,title,genre,studio,synopsis,episodes,year,runtime,type --file shows.csv`
